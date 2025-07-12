@@ -1,6 +1,6 @@
 # Flai SDK
     
-The Flai SDK is a command-line toolset for interacting with the Flai web app. It is also used by our [QGIS plugin](https://plugins.qgis.org/).
+The Flai SDK is a command-line toolset for interacting with the Flai web app. It is also used by our [QGIS plugin](https://plugins.qgis.org/plugins/flai_cli_interface).
 
 
 ## Install
