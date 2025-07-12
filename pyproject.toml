@@ -1,0 +1,65 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]    # 61 is the first to support PEP 621-style metadata
+build-backend = "setuptools.build_meta"
+
+
+[project]
+name = "flai-sdk"
+version = "1.0.0"
+
+authors = [
+  { name = "Flai d.o.o.", email = "info@flai.ai" }
+]
+
+description = "A command-line toolset for interacting with the Flai web app."
+readme = "README.md"
+license = "MIT"
+license-files = ["LICEN[CS]E*"]
+
+requires-python = ">=3.7"
+
+dependencies = [
+#    "build",        # to build our package
+#    "twine",        # to upload new version of our package
+    "requests",
+    "numpy",
+    "click",
+    "laspy",
+    "lazrs",
+    "boto3",
+    "GPUtil",
+    "psutil",
+    "tenacity",
+    "py-cpuinfo",
+    "pycryptodome",
+    "cryptography",
+    "xxhash",
+    "m2r2",
+]
+
+classifiers = [
+  "Development Status :: 5 - Production/Stable",
+  "Intended Audience :: Developers",
+  "Intended Audience :: Education",
+  "Intended Audience :: Science/Research",
+  "Operating System :: MacOS",
+  "Operating System :: Microsoft :: Windows",
+  "Operating System :: Unix",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: Implementation :: PyPy",
+  "Topic :: Scientific/Engineering :: Artificial Intelligence",
+  "Topic :: Software Development",
+  "Topic :: System :: Logging",
+  "Topic :: System :: Monitoring",
+]
+
+
+# console scripts
+[project.scripts]
+flai-sdk = "flai_sdk.cli.cli:cli"
+
+
+# project URLs
+[project.urls]
+Homepage = "https://github.com/flai-ai/flai-sdk"
+Issues   = "https://github.com/flai-ai/flai-sdk/issues"
