@@ -1,0 +1,54 @@
+name: Publish flai-sdk to PyPI
+
+on:
+  push:
+    tags:
+      - '*.*.*'
+
+jobs:
+  build-and-publish:
+    runs-on: ubuntu-latest  # or windows-latest
+    steps:
+      # 1. check out your code
+      - uses: actions/checkout@v4
+
+      - name: Validate tag ↔ pyproject.toml version
+        shell: bash
+        run: |
+            # Extract the tag (e.g. "1.0.0")
+            TAG=${GITHUB_REF#refs/tags/}
+
+            # Pull version out of pyproject.toml
+            FILE_VER=$(grep '^[[:space:]]*version' pyproject.toml \
+                    | sed -E 's/.*version = "([^"]+)".*/\1/')
+
+            echo "Tag:    $TAG"
+            echo "Version:${FILE_VER}"
+
+            if [ "$TAG" != "$FILE_VER" ]; then
+            echo "::error ::Version mismatch: tag is '$TAG' but pyproject.toml is '$FILE_VER'"
+            exit 1
+            fi
+
+      # 2. pick a Python version
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.x'
+
+      # 3. install build tools
+      - name: Install build & twine
+        run: |
+          python -m pip install --upgrade pip
+          pip install build twine
+
+      # 4. build sdist and wheel
+      - name: Build distributions
+        run: python -m build
+
+      # 5. publish to PyPI using your token
+      - name: Publish to PyPI
+        env:
+          TWINE_USERNAME: __token__
+          TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}     # this can be found by going (in current repo) to 'Settings' > 'Secrets and variables' > 'Actions' > 'New repository secret'
+        run: python -m twine upload dist/*
