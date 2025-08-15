@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "flai-sdk"
-version = "1.0.0"
+version = "1.1.0" # major.minor.patch
 
 authors = [
   { name = "Flai d.o.o.", email = "info@flai.ai" }

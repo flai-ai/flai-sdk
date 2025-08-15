@@ -51,4 +51,6 @@ jobs:
         env:
           TWINE_USERNAME: __token__
           TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}     # this can be found by going (in current repo) to 'Settings' > 'Secrets and variables' > 'Actions' > 'New repository secret'
+          # TWINE_PASSWORD: ${{ secrets.TESTING_PYPI_TOKEN }}       # for test.pypi.org
         run: python -m twine upload dist/*
+        # run: python -m twine upload --repository testpypi dist/*  # for test.pypi.org
