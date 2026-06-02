@@ -49,9 +49,11 @@ class Config:
                 if param in self.CONFIG_PARAMS:
                     setattr(self, param, value)
         else:
-            # this is probably problematic for saving
             for param in self.CONFIG_PARAMS:
-                setattr(self, param, os.getenv(param.upper(), ''))
+                current = getattr(self, param, None)        # avoid AttributeError if missing
+                value = os.getenv(param.upper(), current)   # env override if present
+                if value != current:                        # skip if default value and value from env are the same 
+                    setattr(self, param, value)
 
     def save(self) -> None:
         """

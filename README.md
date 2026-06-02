@@ -41,6 +41,14 @@ pip install flai-sdk
     `pip install -e .`
 
 
+## Developer setup
+
+After cloning, enable the repo's git hooks (enforces semver on tags/releases):
+
+```bash
+git config core.hooksPath .githooks
+```
+
 ## First-time setup
 
 To use our package you will need to call `login` command and pass at least two arguments for authorization (see **Tips** below). 

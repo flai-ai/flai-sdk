@@ -31,7 +31,8 @@ class Dataset(BaseModel):
                  read_write_mode: str = 'rw', is_public: bool = False, is_annotated: bool = False,
                  import_datasource: Datasource = None, srid: str = None, unit: str = None,
                  vector_dataset: dict = None, semantic_definition_schema_id: str = None,
-                 to_organization_id: str = None):
+                 to_organization_id: str = None, skip_preprocessing: bool = None,
+                 delete_at: str = None):
 
         self.import_datasource = import_datasource
         self.is_annotated = is_annotated
@@ -45,3 +46,15 @@ class Dataset(BaseModel):
         self.vector_dataset = vector_dataset
         self.semantic_definition_schema_id = semantic_definition_schema_id
         self.to_organization_id = to_organization_id
+        self.skip_preprocessing = skip_preprocessing
+        self.delete_at = delete_at
+
+class LocalDataset(BaseModel):
+
+    def __init__(self, dataset_name: str = None, description: str = None, unit: str = None,
+                 semantic_definition_schema_id: str = None,):
+
+        self.dataset_name = dataset_name
+        self.description = description
+        self.unit = unit
+        self.semantic_definition_schema_id = semantic_definition_schema_id

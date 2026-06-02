@@ -6,8 +6,9 @@ class CliAiTrainingSession(BaseModel):
     def __init__(self, name: str, input_ai_model_id: str,
                  training_dataset_id: str, validation_dataset_id: str,
                  learning_rate: float, subsampling: float, in_radius: float,
-                 epochs: int, batch_limit: int, train_from_null: bool = None,
-                 wandb_id: str = None, wandb_url: str = None, output_semantic_definition_schema_id: str = None, validation_gap = None, num_gpus = None):
+                 epochs: int, batch_limit: int, dataset_type_key: str, train_from_null: bool = None,
+                 wandb_id: str = None, wandb_url: str = None, output_semantic_definition_schema_id: str = None,
+                 validation_gap: int = None, num_gpus: int = None):
 
         self.name = name
         self.input_ai_model_id = input_ai_model_id
@@ -24,6 +25,7 @@ class CliAiTrainingSession(BaseModel):
         self.output_semantic_definition_schema_id = output_semantic_definition_schema_id
         self.validation_gap = validation_gap
         self.num_gpus = num_gpus
+        self.dataset_type_key = dataset_type_key
 
 
 class CliAiTrainingSessionPatch(BaseModel):
@@ -32,11 +34,12 @@ class CliAiTrainingSessionPatch(BaseModel):
                  training_dataset_id: str = None, validation_dataset_id: str = None, output_ai_model_id: str = None,
                  learning_rate: float = None, subsampling: float = None, in_radius: float = None,
                  epochs: int = None, batch_limit: int = None, train_from_null: bool = None,
-                 wandb_id: str = None, wandb_url: str = None, status: str = None):
+                 wandb_id: str = None, wandb_url: str = None, status: str = None, output_best_ai_model_id:str = None):
 
         self.name = name
         self.input_ai_model_id = input_ai_model_id
         self.output_ai_model_id = output_ai_model_id
+        self.output_best_ai_model_id = output_best_ai_model_id
         self.training_dataset_id = training_dataset_id
         self.validation_dataset_id = validation_dataset_id
         self.learning_rate = learning_rate

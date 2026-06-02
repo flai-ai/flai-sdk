@@ -1,6 +1,8 @@
 import os
+import uuid
 from flai_sdk.models import flow_executions
 from flai_sdk.api import flow_executions as flow_executions_api
+from math import isfinite
 import xxhash
 
 
@@ -29,23 +31,29 @@ def get_hash(data):
     return hasher.compute_hash()
 
 
-def create_billing_payload(area, point_count):
+def create_billing_payload(area, point_count, datasize=None):
     payload = {
         'runtime_environment': os.getenv('RUNTIME_ENVIRONMENT', 'local'),
         'values': [
         ]
     }
 
-    if area is not None and float(area) >= 0:
+    if area is not None and isfinite(area) and float(area) >= 0:
         payload['values'].append({
             'resource': 'unique_files_area',
             'value': float(abs(area)),
         })
 
-    if point_count is not None and int(point_count) >= 0:
+    if point_count is not None and isfinite(point_count) and int(point_count) >= 0:
         payload['values'].append({
             'resource': 'unique_files_point_count',
             'value': int(abs(point_count)),
+        })
+
+    if datasize is not None and isfinite(datasize) and float(datasize) >= 0:
+        payload['values'].append({
+            'resource': 'unique_files_datasize',
+            'value': float(abs(datasize)),
         })
 
     return payload
@@ -55,15 +63,25 @@ def start_and_check_file_processing(*args, data_to_hash=None, **kwargs):
 
     report_enable = bool(int(os.getenv('FLAI_ENABLE_PER_FILE_STATUS_LOG_REPORTING', 1)))
     if not report_enable:
-        return
+        return False
 
     billing_payload = {}
-    if kwargs.get('area') is not None or kwargs.get('point_count') is not None:
-        billing_payload = create_billing_payload(kwargs['area'], kwargs['point_count'])
+    if kwargs.get('area') is not None or kwargs.get('point_count') is not None or kwargs.get('datasize') is not None:
+        billing_payload = create_billing_payload(kwargs['area'], kwargs['point_count'], kwargs.get('datasize'))
+
+    f_n_e_id = kwargs.get('flow_node_execution_id', None)
+    if f_n_e_id is None or f_n_e_id == '':
+        raise KeyError('Missing flow node execution id to send processing status.')
+
+    f_n_e_id = str(f_n_e_id)
+    try:
+        uuid.UUID(f_n_e_id, version=4)
+    except ValueError:
+        raise ValueError('Wrong flow node execution id to send processing status.')
 
     return flow_executions_api.FlaiFlowExecutions().post_check_file_processing(
         flow_executions.CheckProcessingFlowNodeExecutionFile(
-            flow_node_execution_id=str(kwargs['flow_node_execution_id']),
+            flow_node_execution_id=f_n_e_id,
             filename=str(kwargs['filename']),
             storage_type=str(kwargs.get('storage_type')),
             dataset_id=kwargs.get('dataset_id', None),

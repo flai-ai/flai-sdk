@@ -3,12 +3,22 @@ from flai_sdk.models.base import BaseModel
 
 class CliExecution(BaseModel):
 
-    def __init__(self, flow_id: str, status: str = '', finished_at: str = '', node_completed_payload: dict = {}, cli_license_id: str = ''):
-        self.finished_at = finished_at
-        self.status = status
-        self.flow_id = flow_id
+    def __init__(self,
+                 flow_id: str,
+                 status: str                  = '',
+                 finished_at: str             = '',
+                 node_completed_payload: dict = {},
+                 cli_license_id: str          = '',
+                 flow_execution_id: str       = None,
+                 metadata: dict               = {},
+                ):
+        self.finished_at            = finished_at
+        self.status                 = status
+        self.flow_id                = flow_id
         self.node_completed_payload = node_completed_payload
-        self.cli_license_id = cli_license_id
+        self.cli_license_id         = cli_license_id
+        self.flow_execution_id      = flow_execution_id
+        self.metadata               = metadata
 
 
 class CliExecutionPartialUpdate(BaseModel):

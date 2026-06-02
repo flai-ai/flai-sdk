@@ -5,7 +5,7 @@ import cpuinfo
 import platform
 from datetime import datetime
 import subprocess
-
+import sys, os
 
 def get_mac_adresses() -> list:
     """
@@ -16,7 +16,7 @@ def get_mac_adresses() -> list:
 
     for addrs in psutil.net_if_addrs().values():
         for addr in addrs:
-            address = addr.address
+            address = addr.address.strip().replace('-', ':')
             # match exactly six pairs of hex digits separated by colons
             parts = address.split(':')
             if len(parts) == 6 and all(len(p) == 2 for p in parts):
@@ -87,8 +87,7 @@ def create_local_machine_info() -> dict:
         total_memory = 0
 
     mac_addrs = get_mac_adresses()
-    mac_addr = mac_addrs[0] if len(mac_addrs) > 0 else ""
-
+    mac_addr = mac_addrs[0] if len(mac_addrs) > 0 else "unknown"  # as "" is interpreted as null in BE request
     return {
         'total_memory': total_memory,
         'cpu_count': cpu_count,
@@ -164,3 +163,9 @@ def create_node_completed_payload(flow: dict, flow_execution_id: str,
                 }
             }
         }
+
+
+def is_wsl() -> bool:
+    return sys.platform.startswith("linux") and bool(
+        os.environ.get("WSL_INTEROP") or os.environ.get("WSL_DISTRO_NAME")
+    )
