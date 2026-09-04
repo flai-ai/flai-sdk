@@ -23,12 +23,20 @@ class FlaiUpload(FlaiService):
                 break
             yield data
 
-    def upload_file(self, filepath: Path, dataset_type_key: str) -> dict:
+    def upload_file(self, filepath: Path, dataset_type_key: str, session_key: str = None,
+                    progress_callback=None) -> dict:
+        """Upload a single file in chunks.
+
+        A ``session_key`` can be shared between multiple ``upload_file`` calls so all
+        files land in the same temporary upload folder ({session_key}/{file_name}) and
+        can be imported together as one dataset. ``progress_callback`` is called with
+        the number of bytes sent after each uploaded chunk.
+        """
 
         if not filepath.is_file():
             raise FileNotFoundError(filepath)
 
-        self.session_id = str(uuid.uuid4())
+        self.session_id = session_key or str(uuid.uuid4())
         content_size = os.stat(filepath).st_size
 
         with open(filepath, 'rb') as f:
@@ -52,10 +60,11 @@ class FlaiUpload(FlaiService):
                 payload['chunk_index'] = self.MIN_CHUNK_INDEX + n
 
                 files = [('file_chunk', (filepath.name, file_chunk, 'application/octet-stream'))]
-                try:
-                    response = self.client.post(self.service_url, data=payload, files=files)
-                except Exception as e:
-                    print(e)
+                # a dropped chunk would leave a corrupt merged file on the server,
+                # so failures (after the client's retries) must abort the upload
+                response = self.client.post(self.service_url, data=payload, files=files)
+                if progress_callback is not None:
+                    progress_callback(len(file_chunk))
                 chunk_start_byte += offset
 
         return json.loads(response)

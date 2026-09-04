@@ -22,6 +22,20 @@ def todict(obj, classkey=None):
         return obj
 
 
+def _strip_none(value):
+    """Recursively drop ``None`` values from dicts (and dicts nested in lists).
+
+    Unlike a shallow comprehension this also removes ``None`` fields inside
+    nested models (e.g. ``NodeBilling`` inside ``NodeCompleted``), so a partial
+    update never carries a null that would clobber an untouched column.
+    """
+    if isinstance(value, dict):
+        return {k: _strip_none(v) for k, v in value.items() if v is not None}
+    if isinstance(value, list):
+        return [_strip_none(v) for v in value]
+    return value
+
+
 class BaseModel(metaclass=ABCMeta):
 
     def object_decoder(self, data: dict):
@@ -32,5 +46,8 @@ class BaseModel(metaclass=ABCMeta):
             if attr in data:
                 setattr(self, attr, data[attr])
 
-    def dict(self):
-        return todict(obj=self)
+    def dict(self, exclude_none: bool = False):
+        data = todict(obj=self)
+        if exclude_none:
+            data = _strip_none(data)
+        return data

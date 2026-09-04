@@ -103,28 +103,50 @@ def create_local_machine_info() -> dict:
 
 def get_os_info() -> str:
 
-    # should work in Linux distros
+    system = platform.system()
+
+    # Linux: keep output identical to previous versions so existing entries
+    # (e.g. "Kernel: 5.15.167.4-microsoft-standard-WSL2" on WSL) stay consistent.
+    if system == 'Linux':
+        try:
+            hostnamectl = subprocess.run(['hostnamectl'], capture_output=True)
+            hostinfo = hostnamectl.stdout.decode().split('\n')
+            info = []
+            for line in hostinfo:
+                if 'System' in line or 'Kernel' in line:
+                    info.append(line.strip())
+            if info:
+                return ' '.join(info)
+        except Exception:
+            pass
+
+        # at least some info should be available even if run in Docker.
+        # platform.release() == `uname -r`, so this matches the old fallback.
+        return f'Kernel: {platform.release()}'
+
+    # Windows: e.g. "Windows 10 (10.0.19045)"
+    if system == 'Windows':
+        release = platform.release()
+        version = platform.version()
+        return f'Windows {release} ({version})'.strip()
+
+    # macOS: e.g. "macOS 14.5 (Darwin 23.5.0)"
+    if system == 'Darwin':
+        mac_ver = platform.mac_ver()[0]
+        kernel = platform.release()
+        if mac_ver:
+            return f'macOS {mac_ver} (Darwin {kernel})'
+        return f'macOS (Darwin {kernel})'
+
+    # Any other platform (BSD, etc.) — return whatever the stdlib can tell us
     try:
-        hostnamectl = subprocess.run(['hostnamectl'], capture_output=True)
-        hostinfo = hostnamectl.stdout.decode().split('\n')
-        info = []
-        for line in hostinfo:
-            if 'System' in line or 'Kernel' in line:
-                info.append(line.strip())
-        return ' '.join(info)
-    except Exception as e:
+        info = f'{platform.system()} {platform.release()}'.strip()
+        if info:
+            return info
+    except Exception:
         pass
 
-    # at leas some info should be available even if run in Docker
-    try:
-        uname = subprocess.run(['uname', '-r'], capture_output=True)
-        return f'Kernel: {uname.stdout.decode().strip()}'
-    except Exception as e:
-        pass
-
-    # TODO: other OS versions
-
-    return 'unkwnown'
+    return 'unknown'
 
 
 def create_node_completed_payload(flow: dict, flow_execution_id: str,

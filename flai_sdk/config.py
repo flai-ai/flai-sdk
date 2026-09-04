@@ -16,12 +16,27 @@ class Config:
 
     config_filepath = Path.home() / Path('.flai')
 
-    def __init__(self):
+    def __init__(self, **overrides):
         self.flai_access_token: str = ""
         self.flai_host: str = "https://api.flai.ai"
         self.flai_licence_key: str = ""
         self.flai_data: dict = {}
         self.load()
+        self.apply_overrides(**overrides)
+
+    def apply_overrides(self, **kwargs) -> None:
+        # TODO: Check if these are necessary
+        aliases = {
+            "access_token": "flai_access_token",
+            "api_url": "flai_host",
+            "host": "flai_host",
+        }
+        for key, value in kwargs.items():
+            if value is None:
+                continue
+            key = aliases.get(key, key)
+            if key in self.CONFIG_PARAMS:
+                setattr(self, key, value)
 
     def info(self):
         for param in self.CONFIG_PARAMS:

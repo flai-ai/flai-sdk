@@ -260,7 +260,7 @@ def login(no_browser: bool) -> None:
 
             os.replace(tmp_name, target)  # atomic on same filesystem
 
-        print(f' Login was successful :D\n')
+        print(f' Login was successful.\n')
     
     else:
         print(f' Login failed, token could not be obtained. Please try again.\n')
@@ -279,13 +279,20 @@ def login(no_browser: bool) -> None:
               help="Skip server-side preprocessing. Requires pre-computed COPC files and overview.copc.laz.")
 @click.option("--preprocess", is_flag=True, default=False,
               help="Preprocess locally: convert to COPC, generate overview, compute stats. Requires pdal CLI.")
+@click.option("--no-zip", "no_zip", is_flag=True, default=False,
+              help="Upload files individually instead of zipping them into a single archive. "
+                   "Not supported for vector datasets (server imports vector data from archives only).")
 @click.option("--delete-at", default=None,
               help="Auto-delete dataset at this date (ISO format, e.g. 2026-04-01).")
 @display_error
-def upload_dataset(path_to_files, project_id, dataset_name, dataset_type_key, srid, unit, semantic_definition_schema_id, skip_preprocessing, preprocess, delete_at, **params: Any) -> None:
+def upload_dataset(path_to_files, project_id, dataset_name, dataset_type_key, srid, unit, semantic_definition_schema_id, skip_preprocessing, preprocess, no_zip, delete_at, **params: Any) -> None:
 
     if unit not in ['m', 'ft', 'us-ft', 'deg']:
         click.echo(f'Given unit "{unit}" not supported. Quiting upload.', color='red')
+        return
+
+    if no_zip and dataset_type_key == 'vector':
+        click.echo('--no-zip is not supported for vector datasets, they must be uploaded as a single archive. Quiting upload.', color='red')
         return
 
     try:
@@ -311,7 +318,7 @@ def upload_dataset(path_to_files, project_id, dataset_name, dataset_type_key, sr
 
     flai_dataset = datasets_api.FlaiDataset()
     if dataset_name is None:
-        dataset_name = f'Flai SDK {path_to_files.parents[0]} {datetime.datetime.now()}'
+        dataset_name = f'Flai SDK {path_input.parent} {datetime.datetime.now()}'
 
     click.echo(
         f'Files from {path_to_files} will be uploaded as new dataset "{dataset_name}" to {flai_config.get_web_app_url()}')
@@ -330,33 +337,46 @@ def upload_dataset(path_to_files, project_id, dataset_name, dataset_type_key, sr
                 unit=unit,
                 log_fn=click.echo,
             )
-            zip_path, dataset_stats, file_stats = preprocessor.run()
+            upload_target, dataset_stats, file_stats = preprocessor.run(zip_output=not no_zip)
 
-            new_dataset = flai_dataset.upload_precomputed_copc(
-                datasets.Dataset(dataset_name=dataset_name, dataset_type_key=dataset_type_key,
-                                 srid=srid, unit=unit, semantic_definition_schema_id=semantic_definition_schema_id,
-                                 to_organization_id=to_organization_id, delete_at=delete_at),
-                zip_path,
-                dataset_stats=dataset_stats,
-                file_stats=file_stats,
-            )
+            upload_files = upload_target if no_zip else [upload_target]
+            total_size = sum(f.stat().st_size for f in upload_files)
+            with click.progressbar(length=total_size, label=f'Uploading {len(upload_files)} file(s)') as bar:
+                new_dataset = flai_dataset.upload_precomputed_copc(
+                    datasets.Dataset(dataset_name=dataset_name, dataset_type_key=dataset_type_key,
+                                     srid=srid, unit=unit, semantic_definition_schema_id=semantic_definition_schema_id,
+                                     to_organization_id=to_organization_id, delete_at=delete_at),
+                    upload_target,
+                    dataset_stats=dataset_stats,
+                    file_stats=file_stats,
+                    progress_callback=bar.update,
+                )
     else:
-        if len(files) > 1:
-            click.echo('More then one file found. Zipping...')
-            path_to_files = Path(path_to_files)
-            temp_filename = str(uuid.uuid4())
-            import_file = utils.zip_all_files(path_to_files.parents[0], path_to_files.name, temp_filename)
-            is_temp_file = True
-        else:
-            import_file = files[0]
+        new_dataset_model = datasets.Dataset(dataset_name=dataset_name, dataset_type_key=dataset_type_key,
+                                             srid=srid, unit=unit, semantic_definition_schema_id=semantic_definition_schema_id,
+                                             to_organization_id=to_organization_id,
+                                             skip_preprocessing=skip_preprocessing if skip_preprocessing else None,
+                                             delete_at=delete_at)
 
-        new_dataset = flai_dataset.upload_and_post_datasets(
-            datasets.Dataset(dataset_name=dataset_name, dataset_type_key=dataset_type_key,
-                             srid=srid, unit=unit, semantic_definition_schema_id=semantic_definition_schema_id,
-                             to_organization_id=to_organization_id,
-                             skip_preprocessing=skip_preprocessing if skip_preprocessing else None,
-                             delete_at=delete_at),
-            import_file)
+        if no_zip and len(files) > 1:
+            total_size = sum(f.stat().st_size for f in files)
+            with click.progressbar(length=total_size, label=f'Uploading {len(files)} file(s)') as bar:
+                new_dataset = flai_dataset.upload_files_and_post_datasets(
+                    new_dataset_model, files, progress_callback=bar.update)
+        else:
+            if len(files) > 1:
+                click.echo('More then one file found. Zipping...')
+                path_to_files = Path(path_to_files)
+                temp_filename = str(uuid.uuid4())
+                import_file = utils.zip_all_files(path_to_files.parents[0], path_to_files.name, temp_filename)
+                is_temp_file = True
+            else:
+                import_file = files[0]
+
+            total_size = import_file.stat().st_size
+            with click.progressbar(length=total_size, label='Uploading') as bar:
+                new_dataset = flai_dataset.upload_and_post_datasets(
+                    new_dataset_model, import_file, progress_callback=bar.update)
 
     dataset_id = new_dataset['id']
     click.echo(
@@ -391,7 +411,7 @@ def upload_dataset(path_to_files, project_id, dataset_name, dataset_type_key, sr
               help="Framework used for training the model.")
 @click.option("-p", "--public", is_flag=True, show_default=True, default=False,
               help="If enabled, uploaded model will be seen to everyone.")
-@click.option("-t", "--trainable", is_flag=True, show_default=True, default=False,
+@click.option("-r", "--trainable", is_flag=True, show_default=True, default=False,
               help="If enabled, uploaded model can be used in retraining process.")
 @display_error
 def upload_ai_model(path_to_folder, model_name, description, dataset_type_key, model_type_key, semantic_definition_schema_id, framework, public, trainable, **params: Any) -> None:

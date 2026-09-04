@@ -16,7 +16,7 @@ class FlowNodeExecutionFile(BaseModel):
         
 class CheckProcessingFlowNodeExecutionFile(BaseModel):
 
-    def __init__(self, flow_node_execution_id: str, filename: str, file_hash: str = None, storage_type: str = None, dataset_id: str = None, status: str = None, message: str = None, task_name: str = None, billing: dict = {}):
+    def __init__(self, flow_node_execution_id: str, filename: str, file_hash: str = None, storage_type: str = None, dataset_id: str = None, status: str = None, message: str = None, task_name: str = None, billing: dict = {}, ray_node_id: str = None):
         self.flow_node_execution_id = flow_node_execution_id
         self.filename = filename
         self.storage_type = storage_type
@@ -26,6 +26,7 @@ class CheckProcessingFlowNodeExecutionFile(BaseModel):
         self.message = message
         self.task_name = task_name
         self.billing = billing
+        self.ray_node_id = ray_node_id
 
 
 class FlowNodeExecution(BaseModel):

@@ -107,3 +107,7 @@ flai-sdk download-flainet-model --help
 
 # and that is it :)
 ```
+
+# TODO
+## Cortex
+Rewrite typed classes to pydantic model to match rest of flai-cortex. https://gitlab.com/flai-ai/dev/flai-cortex/-/work_items/35

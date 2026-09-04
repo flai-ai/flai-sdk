@@ -4,7 +4,9 @@ from flai_sdk.models.datasource import Datasource
 from flai_sdk.api import upload
 from flai_sdk.models.pointclouds import PointcloudStats
 from pathlib import Path
+from typing import List, Union
 import json
+import uuid
 
 
 class FlaiDataset(FlaiService):
@@ -36,34 +38,71 @@ class FlaiDataset(FlaiService):
     def download_datasets(self, dataset_id) -> dict:
         return json.loads(self.client.post(f"{self.service_url}/{dataset_id}/download"))
 
-    def upload_and_post_datasets(self, dataset: Dataset, path: Path) -> dict:
-        flai_upload = upload.FlaiUpload()
-        upload_response = flai_upload.upload_file(path, dataset.dataset_type_key)
+    def upload_and_post_datasets(self, dataset: Dataset, path: Path, progress_callback=None) -> dict:
+        flai_upload = upload.FlaiUpload(config=self.config)
+        upload_response = flai_upload.upload_file(path, dataset.dataset_type_key,
+                                                  progress_callback=progress_callback)
         dataset.import_datasource = Datasource({}, datasource_type='upload_storage_tmp', datasource_address="/",
                                                path=upload_response['end_filename'])
 
         return json.loads(self.client.post(self.service_url, json=dataset.dict()))
 
-    def upload_precomputed_copc(self, dataset: Dataset, path: Path,
-                               dataset_stats: dict = None, file_stats: list = None) -> dict:
+    def upload_files_and_post_datasets(self, dataset: Dataset, paths: List[Path],
+                                       progress_callback=None) -> dict:
+        """Upload multiple files individually (no zipping) and create one dataset from them.
+
+        Every file is uploaded under one shared session key, so they all land in the
+        same temporary upload folder on the server; the dataset is then created with
+        its datasource pointing at that folder and all files in it are imported.
+        Not supported for vector datasets (the server imports vector data from
+        archives only). ``progress_callback`` is called with the number of bytes
+        sent after each uploaded chunk, across all files.
+        """
+        paths = [Path(path) for path in paths]
+        names = [path.name for path in paths]
+        duplicates = sorted({name for name in names if names.count(name) > 1})
+        if duplicates:
+            raise ValueError(f'Files in one dataset must have unique names, got duplicates: {", ".join(duplicates)}')
+
+        flai_upload = upload.FlaiUpload(config=self.config)
+        session_key = str(uuid.uuid4())
+        for path in paths:
+            flai_upload.upload_file(path, dataset.dataset_type_key, session_key=session_key,
+                                    progress_callback=progress_callback)
+
+        # all files sit in the {session_key}/ folder; the BE imports the whole folder
+        dataset.import_datasource = Datasource({}, datasource_type='upload_storage_tmp', datasource_address="/",
+                                               path=session_key)
+
+        return json.loads(self.client.post(self.service_url, json=dataset.dict()))
+
+    def upload_precomputed_copc(self, dataset: Dataset, path: Union[Path, List[Path]],
+                               dataset_stats: dict = None, file_stats: list = None,
+                               progress_callback=None) -> dict:
         """Upload a pre-computed COPC dataset, skipping server-side preprocessing.
 
-        The path should point to a directory or zip containing:
+        The path should point to a zip containing (or be a list of):
         - One or more .copc.laz files (point cloud data)
         - overview.copc.laz (reduced-density overview for the viewer)
 
         Args:
             dataset: Dataset metadata
-            path: Path to directory or zip file containing pre-computed COPC files
+            path: Path to zip file containing pre-computed COPC files, or a list of
+                the COPC file paths to upload individually (no zipping)
             dataset_stats: Optional dataset-level stats dict with keys:
                 point_count, point_density, area, classification_hist,
                 intensity_hist, num_returns_hist, return_num_hist
             file_stats: Optional list of per-file stats dicts with keys:
                 file_name, folder, classification_hist, intensity_hist,
                 num_returns_hist, return_num_hist
+            progress_callback: Called with the number of bytes sent after each chunk
         """
         dataset.skip_preprocessing = True
-        result = self.upload_and_post_datasets(dataset, path)
+        if isinstance(path, (list, tuple)):
+            result = self.upload_files_and_post_datasets(dataset, list(path),
+                                                         progress_callback=progress_callback)
+        else:
+            result = self.upload_and_post_datasets(dataset, path, progress_callback=progress_callback)
 
         if dataset_stats is not None or file_stats is not None:
             dataset_id = result['id']

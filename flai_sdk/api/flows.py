@@ -30,3 +30,31 @@ class FlaiFlows(FlaiService):
             decorators = ''
 
         return self.client.get(f'{self.service_url}/flows/{flow_id}{decorators}')
+
+    def create_flow(self, payload: dict) -> str:
+        """Create a flow from a payload dict and return the new flow id.
+
+        `payload` follows the flai-be create contract:
+            {
+              "title": str,                         # required
+              "description": str | None,
+              "project_id": str | None,
+              "flow_nodes": [                        # required, >= 1
+                {"id", "flow_node_definition_id", "flow_node_key",
+                 "options": {...}, "position": {...}}
+              ],
+              "flow_edges": [
+                {"from_flow_node_id", "to_flow_node_id",
+                 "from_connector", "to_connector", "to_connector_order"}
+              ]
+            }
+
+        The flow is created in the token's active organization. See the flai-cortex
+        `flow_catalog` package for how to build the payload from node definitions.
+        """
+        response = self.client.parse_response_from_text(
+            self.client.post(f'{self.service_url}/flows', json=payload)
+        )
+        if isinstance(response, dict):
+            return response.get('id') or (response.get('data') or {}).get('id')
+        return response

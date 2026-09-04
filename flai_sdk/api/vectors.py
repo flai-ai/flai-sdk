@@ -10,16 +10,30 @@ class FlaiVectors(FlaiService):
     def get_vector_fields(self, dataset_id: str) -> dict:
         return self.client.get(f'{self.service_url}/{dataset_id}/vectors/fields')
 
-    def get_vector_data(self, dataset_id: str, get_fields: str = None, all_fields: bool = False) -> dict:
+    def get_vector_data(self, dataset_id: str, get_fields: str = None, all_fields: bool = False,
+                        page: int = None, page_size: int = None) -> dict:
+        """Fetch a page of a vector dataset's features.
 
-        fields_query = '?data_table_fields='
+        The response is {'items': [...], 'pagination': {'page', 'total_pages',
+        'total_items', 'page_size'}}, with each item carrying its geometry as
+        {'data': <WKT>, 'srid': <int>} under 'geom'. The endpoint always
+        paginates (server defaults: page 1, page_size 50), so read
+        'pagination.total_pages' and loop to retrieve a whole dataset.
+        """
+
+        query = []
 
         if all_fields:
-            fields_query += f'{"*"}'
+            query.append('data_table_fields=*')
         elif get_fields is not None:
-            fields_query += f'{get_fields.replace(" ", "")}'
+            query.append(f'data_table_fields={get_fields.replace(" ", "")}')
 
-        return self.client.get(f'{self.service_url}/{dataset_id}/vectors{fields_query if not fields_query.endswith("=") else ""}')
+        if page is not None:
+            query.append(f'page={page}')
+        if page_size is not None:
+            query.append(f'page_size={page_size}')
+
+        return self.client.get(f'{self.service_url}/{dataset_id}/vectors{"?" + "&".join(query) if query else ""}')
 
     def post_vector_entry_single(self, dataset_id: str, vector_entry: dict) -> dict:
         return self.client.post(f'{self.service_url}/{dataset_id}/vectors', json=vector_entry)

@@ -17,7 +17,7 @@ import time
 import zipfile
 from copy import deepcopy
 from pathlib import Path
-from typing import List, Optional, Tuple
+from typing import List, Optional, Tuple, Union
 
 import laspy
 import numpy as np
@@ -384,11 +384,13 @@ class CopcPreprocessor:
 
         return dataset_stats, file_stats_list
 
-    def run(self) -> Tuple[Path, dict, list]:
+    def run(self, zip_output: bool = True) -> Tuple[Union[Path, List[Path]], dict, list]:
         """
         Run the full preprocessing pipeline.
 
-        Returns: (zip_path, dataset_stats, file_stats)
+        Returns: (zip_path, dataset_stats, file_stats), or with ``zip_output=False``
+        (multi-file upload) the COPC files + overview are not zipped and a list of
+        their paths is returned instead of a zip path.
         """
         if not check_pdal_installed():
             raise RuntimeError(
@@ -411,6 +413,10 @@ class CopcPreprocessor:
 
         self._log('Computing statistics...')
         dataset_stats, file_stats = self.compute_stats(copc_files)
+
+        if not zip_output:
+            self._log('Preprocessing complete.')
+            return copc_files + [overview_path], dataset_stats, file_stats
 
         # Create zip with all COPC files + overview
         self._log('Creating upload archive...')

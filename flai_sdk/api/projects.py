@@ -5,7 +5,7 @@ import json
 class FlaiProject(FlaiService):
 
     @staticmethod
-    def _get_service_url(base_url: str) -> str:
+    def _get_service_url(base_url: str, active_org_id: str = None) -> str:
         return f"{base_url}/projects"
 
     def get_projects(self):

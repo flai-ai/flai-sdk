@@ -3,6 +3,7 @@ import time
 import requests
 from flai_sdk.api import downloads as downloads_api
 from flai_sdk.api import file_downloads as file_downloads_api
+from flai_sdk.api.client import _timeout
 
 
 def download_prepared_zip(click, base_url: str, save_path: str, download_id: str) -> bool:
@@ -27,7 +28,7 @@ def download_prepared_zip(click, base_url: str, save_path: str, download_id: str
             else:
                 download_url = f'{base_url}/presigned{presigned_url["url"]}'
 
-            download_response = requests.get(download_url, verify=False)
+            download_response = requests.get(download_url, verify=False, timeout=_timeout())
             if download_response.status_code != 200:
                 raise Exception(f"Model download failed.")
 

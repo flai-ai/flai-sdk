@@ -139,7 +139,7 @@ class FlaiLogin(FlaiNoAuthService):
             response = self.client.post(f'{self.service_url}', json={'name': gethostname()})
             data = loads(response)
         except: # damo tu nek specificen throw?
-            print('Could not send request for inital token. Is correct host set?')
+            print('Could not send request for initial token. Is correct host set?')
             return False
             
         # time managment

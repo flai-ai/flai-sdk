@@ -23,7 +23,7 @@ class ComputeHash:
 
 def get_hash(data):
 
-    if not os.getenv('FLAI_ENABLE_ON_THE_FLY_PER_FILE_HASH_COMPUTATION', True):
+    if str(os.getenv('FLAI_ENABLE_ON_THE_FLY_PER_FILE_HASH_COMPUTATION', '1')).lower() in {'0', 'false', 'no'}:
         return None
 
     hasher = ComputeHash()
@@ -79,7 +79,11 @@ def start_and_check_file_processing(*args, data_to_hash=None, **kwargs):
     except ValueError:
         raise ValueError('Wrong flow node execution id to send processing status.')
 
-    return flow_executions_api.FlaiFlowExecutions().post_check_file_processing(
+    return flow_executions_api.FlaiFlowExecutions(
+        access_token=kwargs.get('access_token'),
+        flai_host=kwargs.get('flai_host'),
+        api_url=kwargs.get('api_url'),
+    ).post_check_file_processing(
         flow_executions.CheckProcessingFlowNodeExecutionFile(
             flow_node_execution_id=f_n_e_id,
             filename=str(kwargs['filename']),
@@ -90,6 +94,7 @@ def start_and_check_file_processing(*args, data_to_hash=None, **kwargs):
             message=kwargs.get('message'),
             task_name=str(kwargs.get('task_name')),
             billing=billing_payload,
+            ray_node_id=kwargs.get('ray_node_id'),
         )
     )
 
