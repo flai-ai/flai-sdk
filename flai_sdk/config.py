@@ -12,6 +12,7 @@ class Config:
         "flai_host",
         "flai_licence_key",
         "flai_data",
+        "node_options",
     ]
 
     config_filepath = Path.home() / Path('.flai')
@@ -21,6 +22,7 @@ class Config:
         self.flai_host: str = "https://api.flai.ai"
         self.flai_licence_key: str = ""
         self.flai_data: dict = {}
+        self.node_options: dict = {}
         self.load()
         self.apply_overrides(**overrides)
 
@@ -65,6 +67,8 @@ class Config:
                     setattr(self, param, value)
         else:
             for param in self.CONFIG_PARAMS:
+                if param == "node_options":  # NODE_OPTIONS is Node.js's env var, not ours
+                    continue
                 current = getattr(self, param, None)        # avoid AttributeError if missing
                 value = os.getenv(param.upper(), current)   # env override if present
                 if value != current:                        # skip if default value and value from env are the same 

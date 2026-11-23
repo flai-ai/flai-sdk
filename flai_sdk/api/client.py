@@ -41,8 +41,20 @@ def _env_int(name, default):
 MAX_ATTEMPTS = _env_int('FLAI_HTTP_MAX_ATTEMPTS', 5)
 
 
-def _timeout(has_files=False):
+def _timeout(has_files=False, read_timeout=None):
+    """The (connect, read) pair for one request.
+
+    `read_timeout` lets a caller bound a specific call more tightly than the process-wide default.
+    It exists because the read timeout is what a caller has to reason about when the server accepts
+    the connection and then goes silent: `requests` measures it as the gap between bytes, so no
+    answer at all costs the full timeout on EVERY one of the MAX_ATTEMPTS attempts. A caller that
+    does not read the response body for anything but an acknowledgement (a status callback, say)
+    has no use for the generous default and every reason to fail fast. Explicit beats the env var,
+    which stays the way to move the default for everything at once.
+    """
     connect = _env_float('FLAI_HTTP_CONNECT_TIMEOUT', DEFAULT_CONNECT_TIMEOUT)
+    if read_timeout is not None:
+        return (connect, read_timeout)
     if has_files:
         return (connect, _env_float('FLAI_HTTP_UPLOAD_READ_TIMEOUT', DEFAULT_UPLOAD_READ_TIMEOUT))
     return (connect, _env_float('FLAI_HTTP_READ_TIMEOUT', DEFAULT_READ_TIMEOUT))
@@ -83,26 +95,26 @@ class Client():
         return f'Bearer {self.token}'
 
     @retry(retry=retry_if_exception(_should_retry), stop=stop_after_attempt(MAX_ATTEMPTS), wait=wait_exponential_jitter(initial=5, jitter=3))
-    def get(self, url, data=None, json=None, skip_check=False):
+    def get(self, url, data=None, json=None, skip_check=False, read_timeout=None):
         # TODO remove verify (needed just for debugging on local env)
         response = requests.request("GET", url, headers=self._get_headers(), data=data, json=json, files={},
-                                    verify=False, timeout=_timeout())
+                                    verify=False, timeout=_timeout(read_timeout=read_timeout))
         if not skip_check:
             self.check(response)
         return response.json()
 
     @retry(retry=retry_if_exception(_should_retry), stop=stop_after_attempt(MAX_ATTEMPTS), wait=wait_exponential_jitter(initial=5, jitter=3))
-    def get_content(self, url):
+    def get_content(self, url, read_timeout=None):
         response = requests.request("GET", url, headers=self._get_headers(), data={}, files={}, verify=False,
-                                    timeout=_timeout())
+                                    timeout=_timeout(read_timeout=read_timeout))
         self.check(response)
         return response.content
 
     @retry(retry=retry_if_exception(_should_retry), stop=stop_after_attempt(MAX_ATTEMPTS), wait=wait_exponential_jitter(initial=5, jitter=3))
-    def post(self, url, data=None, json=None, files=[]):
+    def post(self, url, data=None, json=None, files=[], read_timeout=None):
         # TODO remove verify (needed just for debugging on local env)
         response = requests.request("POST", url, headers=self._get_headers(), json=json, data=data, files=files,
-                                    verify=False, timeout=_timeout(has_files=bool(files)))
+                                    verify=False, timeout=_timeout(has_files=bool(files), read_timeout=read_timeout))
         self.check(response)
         return response.text
 
@@ -122,18 +134,18 @@ class Client():
         return response.text
 
     @retry(retry=retry_if_exception(_should_retry), stop=stop_after_attempt(MAX_ATTEMPTS), wait=wait_exponential_jitter(initial=5, jitter=3))
-    def patch(self, url, data=None, json=None, files=[]):
+    def patch(self, url, data=None, json=None, files=[], read_timeout=None):
         # TODO remove verify (needed just for debugging on local env)
         response = requests.request("PATCH", url, headers=self._get_headers(), json=json, data=data, files=files,
-                                    verify=False, timeout=_timeout(has_files=bool(files)))
+                                    verify=False, timeout=_timeout(has_files=bool(files), read_timeout=read_timeout))
         self.check(response)
         return response.text
 
     @retry(retry=retry_if_exception(_should_retry), stop=stop_after_attempt(MAX_ATTEMPTS), wait=wait_exponential_jitter(initial=5, jitter=3))
-    def put(self, url, data=None, json=None, files=[]):
+    def put(self, url, data=None, json=None, files=[], read_timeout=None):
         # TODO remove verify (needed just for debugging on local env)
         response = requests.request("PUT", url, headers=self._get_headers(), json=json, data=data, files=files,
-                                    verify=False, timeout=_timeout(has_files=bool(files)))
+                                    verify=False, timeout=_timeout(has_files=bool(files), read_timeout=read_timeout))
         self.check(response)
         return response.text
 
@@ -142,8 +154,10 @@ class Client():
 
         if not 200 <= response.status_code < 300:
             response_body = Client.parse_response(response)
-            LOGGER.warning("flai-be returned HTTP %s for %s", response.status_code,
-                           getattr(response, "url", "<unknown url>"))
+            # DEBUG, not WARNING: the FlaiApiError below carries status and body, and the caller
+            # decides whether the user sees anything (many errors are handled, e.g. retried).
+            LOGGER.debug("flai-be returned HTTP %s for %s", response.status_code,
+                         getattr(response, "url", "<unknown url>"))
             LOGGER.debug("flai-be response body: %s", response_body)
             raise FlaiApiError(response.status_code, response_body)
 

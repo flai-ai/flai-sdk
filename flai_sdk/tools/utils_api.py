@@ -83,6 +83,7 @@ def start_and_check_file_processing(*args, data_to_hash=None, **kwargs):
         access_token=kwargs.get('access_token'),
         flai_host=kwargs.get('flai_host'),
         api_url=kwargs.get('api_url'),
+        read_timeout=kwargs.get('read_timeout'),
     ).post_check_file_processing(
         flow_executions.CheckProcessingFlowNodeExecutionFile(
             flow_node_execution_id=f_n_e_id,
@@ -95,7 +96,8 @@ def start_and_check_file_processing(*args, data_to_hash=None, **kwargs):
             task_name=str(kwargs.get('task_name')),
             billing=billing_payload,
             ray_node_id=kwargs.get('ray_node_id'),
-        )
+        ),
+        read_timeout=kwargs.get('read_timeout'),
     )
 
 

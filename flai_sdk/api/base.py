@@ -13,11 +13,14 @@ class FlaiPublicService(metaclass=ABCMeta):
 
     endpoint = PUBLIC_ENDPOINT
 
-    def __init__(self, config=None, access_token: str = None, flai_host: str = None, api_url: str = None):
+    def __init__(self, config=None, access_token: str = None, flai_host: str = None, api_url: str = None,
+                 read_timeout=None):
         self.config = config or flai_sdk.config.Config()
         self.config.apply_overrides(access_token=access_token, flai_host=flai_host, api_url=api_url)
         self.client = client.Client(config=self.config)
         self.decorators_string = '?decorators='
+
+        self.read_timeout = read_timeout
 
         self.base_url = f'{self.config.flai_host.rstrip("/")}/{self.endpoint}'
         self.active_org_id = self._resolve_org_id()
@@ -41,4 +44,5 @@ class FlaiService(FlaiPublicService):
     endpoint = API_ENDPOINT
 
     def _resolve_org_id(self) -> str:
-        return self.client.get(f'{self.base_url}/oauth/me')['active_organization_id']
+        return self.client.get(f'{self.base_url}/oauth/me',
+                               read_timeout=self.read_timeout)['active_organization_id']

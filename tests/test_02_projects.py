@@ -1,6 +1,6 @@
 import unittest
 import numpy as np
-from flai.api import projects
+from flai_sdk.api import projects
 
 
 class UtilsTests(unittest.TestCase):

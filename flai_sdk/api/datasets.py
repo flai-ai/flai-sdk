@@ -1,5 +1,5 @@
 from .base import FlaiService
-from flai_sdk.models.datasets import Dataset, LocalDataset
+from flai_sdk.models.datasets import Dataset, LocalDataset, LocalHostedDataset
 from flai_sdk.models.datasource import Datasource
 from flai_sdk.api import upload
 from flai_sdk.models.pointclouds import PointcloudStats
@@ -33,6 +33,20 @@ class FlaiDataset(FlaiService):
         return json.loads(self.client.post(
             f"{self.service_url}/local",
             local_dataset.dict()
+        ))
+
+    def post_local_hosted_dataset(self, dataset: LocalHostedDataset) -> dict:
+        """Register a point-cloud dataset whose files stay on THIS machine (`flai view`).
+
+        Metadata only - filenames, extents, point counts, CRS. No point data is uploaded, which
+        is the point: the tiles are served to the browser from a loopback server on the caller's
+        own machine, so LAS never reaches Flai storage.
+
+        Returns {'id': ..., 'datasource_id': ..., 'path': ...}.
+        """
+        return self.client.parse_response_from_text(self.client.post(
+            f"{self.service_url}/local-hosted",
+            json=dataset.dict(exclude_none=True)
         ))
 
     def download_datasets(self, dataset_id) -> dict:

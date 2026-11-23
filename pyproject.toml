@@ -11,7 +11,7 @@ include = ["flai_sdk*"]
 
 [project]
 name = "flai-sdk"
-version = "1.3.13" # major.minor.patch
+version = "1.3.16" # major.minor.patch
 
 authors = [
   { name = "Flai d.o.o.", email = "info@flai.ai" }

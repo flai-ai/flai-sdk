@@ -21,9 +21,13 @@ class FlaiCliClient(FlaiService):
     def inactivate_cli_client(self, cli_client_id: str) -> dict:
         return self.client.get(f'{self.service_url}/{cli_client_id}/inactive')
 
-    def check_latest_version_cli_client(self, cli_client_id: str, version: str) -> dict:
+    def check_latest_version_cli_client(self, cli_client_id: str, version: str, os_info: str = None) -> dict:
+        payload = {'version': version}
+        if os_info:
+            payload['os_info'] = str(os_info)[:255]
+
         return self.client.get(f'{self.service_url}/{cli_client_id}/check_version',
-                               json={'version': version})
+                               json=payload)
 
     def get_cli_client(self, cli_client_id: str, fingerprint: str):
         return self.client.get(f'{self.service_url}/{cli_client_id}',

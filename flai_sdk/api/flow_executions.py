@@ -13,9 +13,10 @@ class FlaiFlowExecutions(FlaiService):
         return json.loads(self.client.post(f'{self.service_url}/flow-node-execution-files',
                                            json=cli_execution_progress.dict()))
 
-    def post_check_file_processing(self, file_execution_progress: CheckProcessingFlowNodeExecutionFile) -> dict:
+    def post_check_file_processing(self, file_execution_progress: CheckProcessingFlowNodeExecutionFile,
+                                   read_timeout=None) -> dict:
         return json.loads(self.client.post(f'{self.service_url}/flow-node-execution-files/check-processing',
-                                           json=file_execution_progress.dict()))
+                                           json=file_execution_progress.dict(), read_timeout=read_timeout))
 
     def update_flow_node_execution(self, flow_node_execution_id, flow_node_execution_status: FlowNodeExecution) -> dict:
         return json.loads(self.client.post(f'{self.service_url}/flow-node-executions/{flow_node_execution_id}',

@@ -27,17 +27,17 @@ class RecordingClient:
         self._oauth_org = oauth_org
         self._post_body = post_body
 
-    def get(self, url, data=None, json=None, skip_check=False):
+    def get(self, url, data=None, json=None, skip_check=False, read_timeout=None):
         if self._oauth_org is None:
             raise AssertionError("token-scoped clients must not call /oauth/me")
         self.calls.append(("GET", url, None))
         return {"active_organization_id": self._oauth_org}
 
-    def post(self, url, data=None, json=None, files=[]):
+    def post(self, url, data=None, json=None, files=[], read_timeout=None):
         self.calls.append(("POST", url, json))
         return self._post_body
 
-    def patch(self, url, data=None, json=None, files=[]):
+    def patch(self, url, data=None, json=None, files=[], read_timeout=None):
         self.calls.append(("PATCH", url, json))
         return self._post_body
 

@@ -1,3 +1,6 @@
+from typing import Optional
+from urllib.parse import urlencode
+
 from .base import FlaiService
 from flai_sdk.models.flows import LocalFlowExecutionsList
 
@@ -15,6 +18,17 @@ class FlaiFlows(FlaiService):
 
     def get_flow_execution(self, flow_execution_id):
         return self.client.get(f'{self.service_url}/flow-executions/{flow_execution_id}')
+
+    def get_flows(self, page: Optional[int] = None, page_size: Optional[int] = None) -> dict:
+        """List the flows of the active organization, one page at a time.
+
+        Returns {'items': [flow, ...], 'pagination': {'page', 'total_pages', 'total_items', 'page_size'}}.
+        The API serves at most 50 flows per page (also the default); use `page` to read the rest.
+        """
+        params = {key: value for key, value in (('page', page), ('page_size', page_size)) if value is not None}
+        query = f'?{urlencode(params)}' if params else ''
+
+        return self.client.get(f'{self.service_url}/flows{query}')
 
     def get_flow(self, flow_id: str, get_nodes: bool = False, get_edges: bool = False) -> dict:
 

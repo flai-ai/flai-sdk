@@ -11,6 +11,7 @@ class CliExecution(BaseModel):
                  cli_license_id: str          = '',
                  flow_execution_id: str       = None,
                  metadata: dict               = {},
+                 cortex_version: str          = None,
                 ):
         self.finished_at            = finished_at
         self.status                 = status
@@ -19,6 +20,7 @@ class CliExecution(BaseModel):
         self.cli_license_id         = cli_license_id
         self.flow_execution_id      = flow_execution_id
         self.metadata               = metadata
+        self.cortex_version         = cortex_version
 
 
 class CliExecutionPartialUpdate(BaseModel):

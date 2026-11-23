@@ -75,7 +75,9 @@ class NodeCompleted(NodeExecutionUpdate):
                  node_response: dict = None,
                  main_peak_memory_bytes: int = None, main_memory_budget_bytes: int = None,
                  file_peak_memory_bytes: int = None, file_memory_budget_bytes: int = None,
-                 file_peak_filename: str = None):
+                 file_peak_filename: str = None,
+                 main_cpu_booked: float = None, main_cpu_used_cores: float = None,
+                 file_cpu_booked: float = None, file_cpu_used_cores: float = None):
         super().__init__(status='finished', message=message, finished_at=finished_at)
         self.billing = billing
         self.output_metadata = output_metadata
@@ -86,6 +88,13 @@ class NodeCompleted(NodeExecutionUpdate):
         self.file_peak_memory_bytes = file_peak_memory_bytes
         self.file_memory_budget_bytes = file_memory_budget_bytes
         self.file_peak_filename = file_peak_filename
+        # CPU counterpart of the memory pair. `booked` is the tier's num_cpus,
+        # `used_cores` is CPU-seconds over wall-seconds. Both layers stay
+        # separate for the same reason memory does: the remedy differs.
+        self.main_cpu_booked = main_cpu_booked
+        self.main_cpu_used_cores = main_cpu_used_cores
+        self.file_cpu_booked = file_cpu_booked
+        self.file_cpu_used_cores = file_cpu_used_cores
 
 
 class NodeFailed(NodeExecutionUpdate):
@@ -94,7 +103,9 @@ class NodeFailed(NodeExecutionUpdate):
                  finished_at: str = None, message: str = None, node_response: dict = None,
                  main_peak_memory_bytes: int = None, main_memory_budget_bytes: int = None,
                  file_peak_memory_bytes: int = None, file_memory_budget_bytes: int = None,
-                 file_peak_filename: str = None):
+                 file_peak_filename: str = None,
+                 main_cpu_booked: float = None, main_cpu_used_cores: float = None,
+                 file_cpu_booked: float = None, file_cpu_used_cores: float = None):
         # flai-be persists the failure reason in `message`; `error`/`traceback`
         # have no v1 column, so fold `error` into `message` (when no explicit
         # message is given) instead of losing it on the wire. `error`/`traceback`
@@ -110,6 +121,10 @@ class NodeFailed(NodeExecutionUpdate):
         self.file_peak_memory_bytes = file_peak_memory_bytes
         self.file_memory_budget_bytes = file_memory_budget_bytes
         self.file_peak_filename = file_peak_filename
+        self.main_cpu_booked = main_cpu_booked
+        self.main_cpu_used_cores = main_cpu_used_cores
+        self.file_cpu_booked = file_cpu_booked
+        self.file_cpu_used_cores = file_cpu_used_cores
 
 
 class FlowExecutionLogEntry(BaseModel):
@@ -121,16 +136,48 @@ class FlowExecutionLogEntry(BaseModel):
     """
 
     def __init__(self, timestamp: str = None, level: str = None, service_name: str = None,
-                 message: str = None, flow_node_execution_id: str = None):
+                 message: str = None, flow_node_execution_id: str = None, event_id: str = None):
         self.timestamp = timestamp
         self.level = level
         self.service_name = service_name
         self.message = message
         self.flow_node_execution_id = flow_node_execution_id
+        # flai-cortex#146: one UUID per captured record, stable across retries; flai-be
+        # deduplicates a redelivered batch on it. Optional for legacy senders.
+        self.event_id = event_id
 
 
 class FlowExecutionLogBatch(BaseModel):
     """A batch of :class:`FlowExecutionLogEntry` (or plain dicts) to flush."""
+
+    def __init__(self, logs: list = None):
+        self.logs = logs if logs is not None else []
+
+
+class ComputeClusterLogEntry(BaseModel):
+    """One cortex cluster-channel log line for POST /compute-clusters/{id}/logs (flai-cortex#146).
+
+    Same envelope contract as :class:`FlowExecutionLogEntry`: ``message`` carries the
+    full cortex JSON line; the sidecar fields are what flai-be indexes into
+    compute_cluster_logs columns. ``node_role`` is head/worker/cli; ``ray_node_id``
+    lets flai-be map the line onto a compute_cluster_workers row.
+    """
+
+    def __init__(self, timestamp: str = None, level: str = None, service_name: str = None,
+                 message: str = None, node_role: str = None, ray_node_id: str = None,
+                 compute_cluster_worker_id: str = None, event_id: str = None):
+        self.timestamp = timestamp
+        self.level = level
+        self.service_name = service_name
+        self.message = message
+        self.node_role = node_role
+        self.ray_node_id = ray_node_id
+        self.compute_cluster_worker_id = compute_cluster_worker_id
+        self.event_id = event_id
+
+
+class ComputeClusterLogBatch(BaseModel):
+    """A batch of :class:`ComputeClusterLogEntry` (or plain dicts) to flush."""
 
     def __init__(self, logs: list = None):
         self.logs = logs if logs is not None else []
